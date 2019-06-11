@@ -19,6 +19,35 @@ class ChatScreen extends Component {
     this.onClickGoToRoom = this.onClickGoToRoom.bind(this);
     this.onChangeNewRoomInput = this.onChangeNewRoomInput.bind(this);
     this.onClickCreateNewRoom = this.onClickCreateNewRoom.bind(this);
+    this.onClickDeleteRoom = this.onClickDeleteRoom.bind(this);
+  }
+
+  componentDidMount() {
+
+    this.getAllRooms();
+
+    //Connecting to socket
+    this.socket = io('http://localhost:3001');
+
+    //Listening for new message
+    this.socket.on('new_message', (message) => {
+      //Showing a message in the console
+      console.log('A new message arrived');
+      console.log(message);
+
+      //If the message belongs to the room where the user is
+      //...update state:messages
+      if(message.room === this.state.currentRoom) {
+        let messages = this.state.messages.slice();
+        messages.push(message);
+        this.setState({messages:messages});
+      }
+    });
+  }
+
+  //Disconnecting socket when the user logs out
+  componentWillUnmount() {
+    this.socket.disconnect();
   }
 
   getAllRooms() {
@@ -30,42 +59,6 @@ class ChatScreen extends Component {
       .catch((error) => {
         console.log(error);
       });
-  }
-
-  componentDidMount() {
-
-    this.getAllRooms();
-
-    //Connecting to socket
-    //this.socket = io('http://localhost:3001');
-
-    //Showing a message 'connected' in the log when socket is connected
-    // this.socket.on('connect', function(){
-    //   console.log('connected');
-    // });
-
-    //All messages received from socket will be put in state:messages
-    //Using big arrow to bind 'this'. 'This' will be the same as outside the function.
-    // this.socket.on('messages', (messages) => {
-    //   this.setState({messages: messages});
-    // });
-
-    //Updating state:messages when a new message arrives
-    // this.socket.on('new_message', (message) => {
-    //   //Showing a message in the console
-    //   console.log('A new message arrived');
-    //   console.log(message);
-    //
-    //   //Updating state:messages
-    //   let messages = this.state.messages.slice();
-    //   messages.push(message);
-    //   this.setState({messages:messages});
-    // });
-  }
-
-  //Disconnecting socket when the user logs out
-  componentWillUnmount() {
-    //this.socket.disconnect();
   }
 
   sendMessage(username, content) {
@@ -81,12 +74,6 @@ class ChatScreen extends Component {
     .catch(function (error) {
       console.log(error);
     });
-
-    // this.socket.emit('chat message', {
-    //   username: username,
-    //   content: content,
-    //   socket_id: this.socket.id,
-    // });
   }
 
   handleSubmit(username, content) {
@@ -95,37 +82,11 @@ class ChatScreen extends Component {
 
     // << 2: If ok, send message and update state:messages >>
     if(contentIsOk) {
-
-      console.log('This message is ok.');
-
       //Removing error message
       this.setState({errorMessage: false});
 
       //Sending message
       this.sendMessage(username, content);
-
-      //Finding out the nr of the latest message
-      let messagesLength = this.state.messages.length;
-      let latestMessageNr;
-      if(messagesLength === 0) {
-        latestMessageNr = 0;
-      }
-      else {
-        let latestMessageId = this.state.messages[messagesLength - 1].id;
-        latestMessageNr = parseFloat(latestMessageId.split('-')[1]);
-      }
-
-      //Creating an object out of the new message
-      let newMessage = {
-        username: username,
-        content: content,
-        id: 'message-' + (latestMessageNr + 1),
-      };
-
-      //Adding the new object to state:messages
-      let messages = this.state.messages.slice();
-      messages.push(newMessage);
-      this.setState({messages:messages});
     }
     else {
       console.log('This message is not ok.');
@@ -163,30 +124,8 @@ class ChatScreen extends Component {
     return newArray;
   }
 
-  // onClickGoToSecretRoom(event) {
-  //   console.log('Going to secret room.');
-  //   this.socket.emit('join', 'secret');
-  //
-  //   //All messages received from socket will be put in state:messages
-  //   //Using big arrow to bind 'this'. 'This' will be the same as outside the function.
-  //   this.socket.on('messages', (messages) => {
-  //     this.setState({messages: messages});
-  //   });
-  // }
-
-  // onClickGoToGeneralRoom(event) {
-  //   console.log('Going to general room.');
-  //   this.socket.emit('join', 'general');
-  //
-  //   //All messages received from socket will be put in state:messages
-  //   //Using big arrow to bind 'this'. 'This' will be the same as outside the function.
-  //   this.socket.on('messages', (messages) => {
-  //     this.setState({messages: messages});
-  //   });
-  // }
-
   onClickGoToRoom(event) {
-    let room = event.target.textContent;
+    let room = event.target.id;
 
     // Get all messages in a room
     axios.get('/messages/' + room)
@@ -222,11 +161,31 @@ class ChatScreen extends Component {
     });
   }
 
+  onClickDeleteRoom(event) {
+    let roomToDelete = event.target.id.split('-')[1];
+    console.log('roomToDelete: ', roomToDelete);
+
+    //Prevent bubbling
+    event.stopPropagation();
+
+    //Delete request
+    axios.delete('/' + roomToDelete)
+    .then(function (response) {
+      console.log(response);
+    })
+    .catch(function (error) {
+      console.log(error);
+    });
+
+    //Update state:rooms
+    this.getAllRooms();
+  }
+
   render() {
       let currentRoom = this.state.currentRoom;
 
       let roomButtons = this.state.rooms.map(room => {
-        return <RoomButton roomName={room} key={room} onClickGoToRoom={this.onClickGoToRoom}/>;
+        return <RoomButton roomName={room} key={room} onClickGoToRoom={this.onClickGoToRoom} onClickDeleteRoom={this.onClickDeleteRoom}/>;
       });
 
       return (
@@ -344,10 +303,16 @@ class LinkWithHttpAdded extends Component {
   }
 }
 
-// ------------------ Component: RoomButton ---------------------------
+// ------------------ Component: Room button ---------------------------
 class RoomButton extends Component {
   render() {
-    return <button className="room-button" onClick={this.props.onClickGoToRoom}>{this.props.roomName}</button>;
+    let iconId = 'delete-' + this.props.roomName;
+    return(
+      <button className="room-button" id={this.props.roomName} onClick={this.props.onClickGoToRoom}>
+        {this.props.roomName}
+        <i id={iconId} onClick={this.props.onClickDeleteRoom}>X</i>
+      </button>
+    );
   }
 }
 

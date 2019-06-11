@@ -10,6 +10,17 @@ var usersRouter = require('./routes/users');
 
 const app = express();
 
+// -------------- Socket code -------------------------
+
+var http = require('http').Server(app);
+var io = require('socket.io')(http);
+
+io.on('connection', function(socket){
+  //Shows a message when a user connects
+  console.log('A user connected');
+});
+
+// ------------------- Views and middlewares ------------------
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
@@ -23,6 +34,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
 
+// -------------------- The 'actual' code --------------------
 let messages = {};
 
 //Fetching stored messages
@@ -155,22 +167,46 @@ app.post('/messages/:room', (request, response) => {
     id: createId(room),
   };
 
-  console.log('newMessage: ', newMessage);
+  console.log(newMessage);
 
   //Adding new message to the room
   messages[room].messages.push(newMessage);
-
-  console.log('messages: ', messages);
 
   //Updating messages.json
   fs.writeFile('./messages.json', JSON.stringify(messages), function() {
     console.log('messages.json updated');
   });
 
-  //Emitting message
-  //*Not implemented yet...
+  let messageWithRoomKey = {
+    ...newMessage,
+    room: room,
+  };
+
+  //Emitting message - with a room key
+  io.emit('new_message', messageWithRoomKey);
 
   response.status(201).json(newMessage);
+});
+
+//DELETE ROOM
+app.delete('/:room', (request, response) => {
+  let room = request.params.room;
+  console.log('Room to delete: ', room);
+
+  if(roomDoExist(room) === false) {
+    response.status(404).end();
+    return;
+  }
+
+  //Deleting room from 'messages'
+  delete messages[room];
+
+  //Updating messages.json
+  fs.writeFile('./messages.json', JSON.stringify(messages), function() {
+    console.log('messages.json updated');
+  });
+
+  response.end();
 });
 
 // catch 404 and forward to error handler
@@ -189,4 +225,4 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-module.exports = app;
+module.exports = http;
