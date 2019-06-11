@@ -14,6 +14,7 @@ class ChatScreen extends Component {
       rooms: [],
       currentRoom: '',
       newRoomInput: '',
+      userHistory: [],
     };
     this.handleSubmit = this.handleSubmit.bind(this);
     this.onClickGoToRoom = this.onClickGoToRoom.bind(this);
@@ -55,6 +56,19 @@ class ChatScreen extends Component {
       .then((response) => {
         let rooms = response.data;
         this.setState({rooms:rooms});
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
+
+  getMessagesAndUserHistoryOfRoom(room) {
+    axios.get('/messages/' + room)
+      .then((response) => {
+        let messages = response.data.messages;
+        this.setState({messages:messages});
+        let userHistory = response.data.userHistory;
+        this.setState({userHistory:userHistory});
       })
       .catch((error) => {
         console.log(error);
@@ -126,19 +140,7 @@ class ChatScreen extends Component {
 
   onClickGoToRoom(event) {
     let room = event.target.id;
-
-    // Get all messages in a room
-    axios.get('/messages/' + room)
-      .then((response) => {
-        // handle success
-        let messages = response.data;
-        this.setState({messages:messages});
-      })
-      .catch((error) => {
-        // handle error
-        console.log(error);
-      });
-
+    this.getMessagesAndUserHistoryOfRoom(room);
     this.setState({currentRoom:room});
   }
 
@@ -183,10 +185,18 @@ class ChatScreen extends Component {
 
   render() {
       let currentRoom = this.state.currentRoom;
+      let userHistory = this.state.userHistory;
 
       let roomButtons = this.state.rooms.map(room => {
         return <RoomButton roomName={room} key={room} onClickGoToRoom={this.onClickGoToRoom} onClickDeleteRoom={this.onClickDeleteRoom}/>;
       });
+
+      let activeUsers = userHistory.map( username => {
+        return <span key={username}>{username}, </span>;
+      });
+
+      //console.log('activeUsers.length: ', activeUsers.length);
+      //console.log('activeUsers.length - 1: ', activeUsers.length - 1);
 
       return (
         <ScrollToBottom>
@@ -194,6 +204,7 @@ class ChatScreen extends Component {
           <header>
             <h1>EasyChat</h1>
             { currentRoom ? <h2>{currentRoom}</h2> : null }
+            { currentRoom ? <p>Active users: {activeUsers}</p> : null }
             <div className="log-out-div">
               <p className="whoIsLoggedIn-paragraph">{this.props.username} is logged in.</p>
               <button className="log-out-button" onClick={this.props.onClick}>Log out</button>

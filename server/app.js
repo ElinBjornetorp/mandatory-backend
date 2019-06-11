@@ -40,7 +40,7 @@ let messages = {};
 //Fetching stored messages
 fs.readFile('./messages.json', (err, data) => {
   if (err) {
-    //If there is no file or the file is empty, do nothing.
+    //If there is no file, do nothing.
     //*It is recommended by Node.js to handle the error here instead of checking for the existance of the file before calling readFile.
     console.log("GOT ERR", err);
     return;
@@ -56,7 +56,8 @@ fs.readFile('./messages.json', (err, data) => {
       messages = storedMessages;
     }
     catch(error) {
-      throw new Error('Oops, something went wrong! Probably not JSON.');
+      //'messages.json' is probably empty. Do nothing.
+      console.log('Oops, something went wrong! Messages.json is probably empty or does not contain JSON.');
     }
   }
 });
@@ -97,8 +98,8 @@ app.get('/messages/:room', (request, response) => {
     return;
   }
 
-  let messagesInRoom = messages[room].messages;
-  response.json(messagesInRoom);
+  let roomObject = messages[room];
+  response.json(roomObject);
 });
 
 // GET ALL ROOMS
@@ -127,7 +128,7 @@ app.post('/rooms', (request, response) => {
     return;
   }
 
-  messages[roomName] = {name: roomName, messages: []};
+  messages[roomName] = {name: roomName, messages: [], userHistory: []};
 
   console.log('messages: ', messages);
 
@@ -167,16 +168,29 @@ app.post('/messages/:room', (request, response) => {
     id: createId(room),
   };
 
-  console.log(newMessage);
-
   //Adding new message to the room
   messages[room].messages.push(newMessage);
+
+  //Adding user to userHistory, if not already included
+  let userHistory = messages[room].userHistory;
+  let includedInUserHistory = false;
+  for(let user of userHistory) {
+    if(user === username) {
+      includedInUserHistory = true;
+    }
+  }
+  if(includedInUserHistory === false) {
+    userHistory.push(username);
+  }
+
+  console.log('messages: ', messages);
 
   //Updating messages.json
   fs.writeFile('./messages.json', JSON.stringify(messages), function() {
     console.log('messages.json updated');
   });
 
+  //Adding room key (for when emitting message)
   let messageWithRoomKey = {
     ...newMessage,
     room: room,
