@@ -1,0 +1,178 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var app = require('../app');
+var debug = require('debug')('server:server');
+var http = require('http').Server(app);
+var fs = require('fs');
+
+/**
+ * Get port from environment and store in Express.
+ */
+
+var port = normalizePort(process.env.PORT || '3001');
+app.set('port', port);
+
+//Listen on port
+http.listen(port, function() {
+  console.log('Server listening on port ' + port);
+});
+
+// server.on('error', onError);
+// server.on('listening', onListening);
+
+/**
+ * Normalize a port into a number, string, or false.
+ */
+
+function normalizePort(val) {
+  var port = parseInt(val, 10);
+
+  if (isNaN(port)) {
+    // named pipe
+    return val;
+  }
+
+  if (port >= 0) {
+    // port number
+    return port;
+  }
+
+  return false;
+}
+
+/**
+ * Event listener for HTTP server "error" event.
+ */
+
+function onError(error) {
+  if (error.syscall !== 'listen') {
+    throw error;
+  }
+
+  var bind = typeof port === 'string'
+    ? 'Pipe ' + port
+    : 'Port ' + port;
+
+  // handle specific listen errors with friendly messages
+  switch (error.code) {
+    case 'EACCES':
+      console.error(bind + ' requires elevated privileges');
+      process.exit(1);
+      break;
+    case 'EADDRINUSE':
+      console.error(bind + ' is already in use');
+      process.exit(1);
+      break;
+    default:
+      throw error;
+  }
+}
+
+/**
+ * Event listener for HTTP server "listening" event.
+ */
+
+function onListening() {
+  var addr = server.address();
+  var bind = typeof addr === 'string'
+    ? 'pipe ' + addr
+    : 'port ' + addr.port;
+  debug('Listening on ' + bind);
+}
+
+// -------------- 'My' code -------------------
+
+
+
+// -------------- Socket code --------------------
+
+var io = require('socket.io')(http);
+let room = 'general';
+
+// io.on('connection', function(socket){
+//   //Shows a message when a user connects
+//   console.log('a user connected');
+//
+//   console.log('socket.rooms: ', socket.rooms);
+//
+//   //Joining the 'general' room
+//   socket.join('general', function() {
+//     console.log('socket.rooms: ', socket.rooms);
+//   });
+//
+//   //Sending stored messages to the user that connected
+//   socket.emit('messages', messages);
+//
+//   //Listening for chat message
+//   socket.on('chat message', function(message) {
+//
+//     //'Message' is expected to be an object with two keys: 'username' and 'content'
+//     let username = message.username;
+//     let content = message.content;
+//     console.log('username: ' + username);
+//     console.log('content: ' + content);
+//
+//     //Add id
+//     let messageWithId = {
+//       ...message,
+//       id: createId(),
+//     };
+//
+//     //Store message
+//     messages.push(messageWithId);
+//     //console.log('Messages: ', messages);
+//     fs.writeFile('./database/' + room + '_room.json', JSON.stringify(messages), function(error) {
+//       console.log('Messages saved in ' + room + '_room.json');
+//     });
+//
+//     //Send the message to other users in the room
+//     socket.broadcast.in(room).emit('new_message', messageWithId);
+//   });
+//
+//   //Listening for 'join'
+//   socket.on('join', function(roomName) { // roomName is expected to be a string
+//     console.log('Someone wants to join ' + roomName + ' room.');
+//
+//     socket.join(roomName, function() {
+//       console.log('socket.rooms: ', socket.rooms);
+//     });
+//
+//     //socket.leave(oldRoomName); <-- Have to figure out this part...
+//
+//     //Fetching messages stored in database
+//     fs.readFile('./database/' + roomName + '_room.json', (err, data) => {
+//       //If there is no file or the file is empty, make 'messages' an empty array.
+//       if (err) {
+//         console.log(err);
+//         messages = [];
+//       }
+//       //If there are stored messages, parse the JSON
+//       // and put the messages in 'messages'
+//       else {
+//         try {
+//           let storedMessages = JSON.parse(data);
+//           //console.log('storedMessages: ', storedMessages);
+//           messages = storedMessages;
+//
+//           //Updating id nr
+//           let latestMessageId = messages[messages.length - 1].id;
+//           let latestMessageNr = parseInt(latestMessageId.split('-')[1]);
+//           messageNr = latestMessageNr;
+//         }
+//         catch(error) {
+//           throw new Error('Oops, something went wrong! Probably not JSON.');
+//         }
+//       }
+//
+//       //Then, send stored messages
+//       console.log('Sending stored messages');
+//       socket.emit('messages', messages);
+//     });
+//
+//     room = roomName;
+//   });
+// });
