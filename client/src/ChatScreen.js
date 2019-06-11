@@ -13,26 +13,28 @@ class ChatScreen extends Component {
       errorMessage: false,
       rooms: [],
       currentRoom: '',
+      newRoomInput: '',
     };
     this.handleSubmit = this.handleSubmit.bind(this);
-    // this.onClickGoToSecretRoom = this.onClickGoToSecretRoom.bind(this);
-    // this.onClickGoToGeneralRoom = this.onClickGoToGeneralRoom.bind(this);
     this.onClickGoToRoom = this.onClickGoToRoom.bind(this);
+    this.onChangeNewRoomInput = this.onChangeNewRoomInput.bind(this);
+    this.onClickCreateNewRoom = this.onClickCreateNewRoom.bind(this);
   }
 
-  componentDidMount() {
-
-    // Get all rooms
+  getAllRooms() {
     axios.get('/rooms')
       .then((response) => {
-        // handle success
         let rooms = response.data;
         this.setState({rooms:rooms});
       })
       .catch((error) => {
-        // handle error
         console.log(error);
       });
+  }
+
+  componentDidMount() {
+
+    this.getAllRooms();
 
     //Connecting to socket
     //this.socket = io('http://localhost:3001');
@@ -63,15 +65,28 @@ class ChatScreen extends Component {
 
   //Disconnecting socket when the user logs out
   componentWillUnmount() {
-    this.socket.disconnect();
+    //this.socket.disconnect();
   }
 
   sendMessage(username, content) {
-    this.socket.emit('chat message', {
+    let currentRoom = this.state.currentRoom;
+
+    axios.post('/messages/' + currentRoom, {
       username: username,
-      content: content,
-      socket_id: this.socket.id,
+      content: content
+    })
+    .then(function (response) {
+      console.log(response);
+    })
+    .catch(function (error) {
+      console.log(error);
     });
+
+    // this.socket.emit('chat message', {
+    //   username: username,
+    //   content: content,
+    //   socket_id: this.socket.id,
+    // });
   }
 
   handleSubmit(username, content) {
@@ -172,14 +187,12 @@ class ChatScreen extends Component {
 
   onClickGoToRoom(event) {
     let room = event.target.textContent;
-    console.log(room);
 
     // Get all messages in a room
     axios.get('/messages/' + room)
       .then((response) => {
         // handle success
         let messages = response.data;
-        console.log(messages);
         this.setState({messages:messages});
       })
       .catch((error) => {
@@ -188,6 +201,25 @@ class ChatScreen extends Component {
       });
 
     this.setState({currentRoom:room});
+  }
+
+  onChangeNewRoomInput(event) {
+    let input = event.target.value;
+    this.setState({newRoomInput:input});
+  }
+
+  onClickCreateNewRoom(event) {
+    let roomName = this.state.newRoomInput;
+    axios.post('/rooms', {
+      roomName: roomName,
+    })
+    .then((response) => {
+      console.log(response);
+      this.getAllRooms();
+    })
+    .catch((error) => {
+      console.log(error);
+    });
   }
 
   render() {
@@ -207,6 +239,8 @@ class ChatScreen extends Component {
               <p className="whoIsLoggedIn-paragraph">{this.props.username} is logged in.</p>
               <button className="log-out-button" onClick={this.props.onClick}>Log out</button>
               {roomButtons}
+              <input type="text" onChange={this.onChangeNewRoomInput}/>
+              <button onClick={this.onClickCreateNewRoom}>Create new room</button>
             </div>
           </header>
           <main>
