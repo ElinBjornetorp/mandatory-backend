@@ -25,6 +25,7 @@ class ChatScreen extends Component {
 
   componentDidMount() {
 
+    //Get a list of all rooms from the server
     this.getAllRooms();
 
     //Connecting to socket
@@ -32,16 +33,28 @@ class ChatScreen extends Component {
 
     //Listening for new message
     this.socket.on('new_message', (message) => {
-      //Showing a message in the console
-      console.log('A new message arrived');
-      console.log(message);
 
-      //If the message belongs to the room where the user is
-      //...update state:messages
+      //If the message belongs to the room where the user is...
       if(message.room === this.state.currentRoom) {
+        // 1: Update state:messages
         let messages = this.state.messages.slice();
         messages.push(message);
         this.setState({messages:messages});
+
+        // 2: Add user to userHistory, if not already included
+        let newUsername = message.username;
+        let userHistory = this.state.userHistory;
+        let includedInUserHistory = false;
+        for(let user of userHistory) {
+          if(user === newUsername) {
+            includedInUserHistory = true;
+          }
+        }
+        if(includedInUserHistory === false) {
+          let slicedUserHistory = this.state.userHistory.slice();
+          slicedUserHistory.push(newUsername);
+          this.setState({userHistory:slicedUserHistory});
+        }
       }
     });
   }
@@ -65,10 +78,8 @@ class ChatScreen extends Component {
   getMessagesAndUserHistoryOfRoom(room) {
     axios.get('/messages/' + room)
       .then((response) => {
-        let messages = response.data.messages;
-        this.setState({messages:messages});
-        let userHistory = response.data.userHistory;
-        this.setState({userHistory:userHistory});
+        this.setState({messages:response.data.messages});
+        this.setState({userHistory:response.data.userHistory});
       })
       .catch((error) => {
         console.log(error);
@@ -94,7 +105,7 @@ class ChatScreen extends Component {
     // << 1: Checking that the message is between 1 and 200 characters long >>
     let contentIsOk = content.length <= 200 && content.length > 0;
 
-    // << 2: If ok, send message and update state:messages >>
+    // << 2: If ok, send message >>
     if(contentIsOk) {
       //Removing error message
       this.setState({errorMessage: false});
@@ -103,10 +114,8 @@ class ChatScreen extends Component {
       this.sendMessage(username, content);
     }
     else {
-      console.log('This message is not ok.');
       this.setState({errorMessage: true});
     }
-
   }
 
   convertToLinks(string) {
@@ -151,12 +160,18 @@ class ChatScreen extends Component {
 
   onClickCreateNewRoom(event) {
     let roomName = this.state.newRoomInput;
+
+    // Updating state:rooms
+    let rooms = this.state.rooms.slice();
+    rooms.push(roomName);
+    this.setState({rooms:rooms});
+
+    // Posting new room to server
     axios.post('/rooms', {
       roomName: roomName,
     })
     .then((response) => {
       console.log(response);
-      this.getAllRooms();
     })
     .catch((error) => {
       console.log(error);
@@ -165,7 +180,6 @@ class ChatScreen extends Component {
 
   onClickDeleteRoom(event) {
     let roomToDelete = event.target.id.split('-')[1];
-    console.log('roomToDelete: ', roomToDelete);
 
     //Prevent bubbling
     event.stopPropagation();
@@ -194,9 +208,6 @@ class ChatScreen extends Component {
       let activeUsers = userHistory.map( username => {
         return <span key={username}>{username}, </span>;
       });
-
-      //console.log('activeUsers.length: ', activeUsers.length);
-      //console.log('activeUsers.length - 1: ', activeUsers.length - 1);
 
       return (
         <ScrollToBottom>

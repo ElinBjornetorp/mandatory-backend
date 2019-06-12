@@ -9,16 +9,8 @@ var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 
 const app = express();
-
-// -------------- Socket code -------------------------
-
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
-
-io.on('connection', function(socket){
-  //Shows a message when a user connects
-  console.log('A user connected');
-});
 
 // ------------------- Views and middlewares ------------------
 // view engine setup
@@ -45,7 +37,6 @@ fs.readFile('./messages.json', (err, data) => {
     console.log("GOT ERR", err);
     return;
   }
-
   else {
     try {
       //Parse messages
@@ -74,15 +65,13 @@ function roomDoExist(roomName) {
 function createId(room) {
   let nr = 1;
   let messagesInRoom = messages[room].messages;
-  console.log('messagesInRoom: ', messagesInRoom);
 
   if(messagesInRoom.length > 0) {
     let latestMessageId = messagesInRoom[messagesInRoom.length - 1].id;
-    console.log('latestMessageId: ', latestMessageId);
     let latestMessageNr = parseInt(latestMessageId.split('-')[1]);
-    console.log('latestMessageNr: ', latestMessageNr);
     nr = latestMessageNr + 1;
   }
+
   return 'message-' + nr;
 }
 
@@ -121,16 +110,13 @@ app.post('/rooms', (request, response) => {
     return;
   }
 
-  //Validation: The room name must not exist
-  // ***This could be optimized...
+  //Validation: The room name must not exist already
   if(roomDoExist(roomName)) {
     response.status(400).end();
     return;
   }
 
   messages[roomName] = {name: roomName, messages: [], userHistory: []};
-
-  console.log('messages: ', messages);
 
   //Saving messages object with the new key (=room)
   fs.writeFile('./messages.json', JSON.stringify(messages), function(error) {
@@ -183,8 +169,6 @@ app.post('/messages/:room', (request, response) => {
     userHistory.push(username);
   }
 
-  console.log('messages: ', messages);
-
   //Updating messages.json
   fs.writeFile('./messages.json', JSON.stringify(messages), function() {
     console.log('messages.json updated');
@@ -199,14 +183,15 @@ app.post('/messages/:room', (request, response) => {
   //Emitting message - with a room key
   io.emit('new_message', messageWithRoomKey);
 
+  //Ending response
   response.status(201).json(newMessage);
 });
 
 //DELETE ROOM
 app.delete('/:room', (request, response) => {
   let room = request.params.room;
-  console.log('Room to delete: ', room);
 
+  //Validating that the room exists
   if(roomDoExist(room) === false) {
     response.status(404).end();
     return;
@@ -220,6 +205,7 @@ app.delete('/:room', (request, response) => {
     console.log('messages.json updated');
   });
 
+  //Ending response
   response.end();
 });
 
