@@ -161,6 +161,8 @@ class ChatScreen extends Component {
   onClickCreateNewRoom(event) {
     let roomName = this.state.newRoomInput;
 
+    this.setState({newRoomInput:''});
+
     // Updating state:rooms
     let rooms = this.state.rooms.slice();
     rooms.push(roomName);
@@ -220,7 +222,7 @@ class ChatScreen extends Component {
               <p className="whoIsLoggedIn-paragraph">{this.props.username} is logged in.</p>
               <button className="log-out-button" onClick={this.props.onClick}>Log out</button>
               {roomButtons}
-              <input type="text" onChange={this.onChangeNewRoomInput}/>
+              <input type="text" value={this.state.newRoomInput} onChange={this.onChangeNewRoomInput}/>
               <button onClick={this.onClickCreateNewRoom}>Create new room</button>
             </div>
           </header>
